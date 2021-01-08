@@ -96,8 +96,8 @@ func (d *DNSProvider) Timeout() (timeout, interval time.Duration) {
 }
 
 // Present creates a TXT record to fulfill the dns-01 challenge.
-func (d *DNSProvider) Present(domain, token, keyAuth string) error {
-	fqdn, value := dns01.GetRecord(domain, keyAuth)
+func (d *DNSProvider) Present(domain, token string, keyAuth string) error {
+	fqdn, _ := dns01.GetRecord(domain, keyAuth)
 
 	authZone, err := getAuthZone(domain)
 	if err != nil {
@@ -115,7 +115,7 @@ func (d *DNSProvider) Present(domain, token, keyAuth string) error {
 
 	// TXT record entry already existing
 	if record != nil {
-		if containsValue(record, value) {
+		if containsValue(record, token) {
 			return nil
 		}
 
@@ -123,7 +123,7 @@ func (d *DNSProvider) Present(domain, token, keyAuth string) error {
 			Name:    record.Name,
 			TTL:     record.TTL,
 			Type:    record.Type,
-			Content: append(record.Content, value),
+			Content: append(record.Content, token),
 		}
 
 		_, err = d.client.CreateUpdateRecord(authZone, request)
@@ -137,7 +137,7 @@ func (d *DNSProvider) Present(domain, token, keyAuth string) error {
 		Type:    "TXT",
 		Name:    recordName,
 		TTL:     d.config.TTL,
-		Content: internal.Value{value},
+		Content: internal.Value{token},
 	}
 
 	_, err = d.client.CreateUpdateRecord(authZone, request)
@@ -149,8 +149,8 @@ func (d *DNSProvider) Present(domain, token, keyAuth string) error {
 }
 
 // CleanUp removes the TXT record previously created.
-func (d *DNSProvider) CleanUp(domain, token, keyAuth string) error {
-	fqdn, value := dns01.GetRecord(domain, keyAuth)
+func (d *DNSProvider) CleanUp(domain, token string, keyAuth string) error {
+	fqdn, _ := dns01.GetRecord(domain, keyAuth)
 
 	authZone, err := getAuthZone(domain)
 	if err != nil {
@@ -169,7 +169,7 @@ func (d *DNSProvider) CleanUp(domain, token, keyAuth string) error {
 		return nil
 	}
 
-	if !containsValue(record, value) {
+	if !containsValue(record, token) {
 		return nil
 	}
 
@@ -189,7 +189,7 @@ func (d *DNSProvider) CleanUp(domain, token, keyAuth string) error {
 	}
 
 	for _, val := range record.Content {
-		if val != value {
+		if val != token {
 			request.Content = append(request.Content, val)
 		}
 	}
